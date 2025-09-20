@@ -30,33 +30,23 @@ public class FoodAnalysisServiceImpl implements FoodAnalysisService {
         try {
             BufferedImage image = ImageIO.read(imageInputStream);
             if (image == null) {
-                System.out.println("DEBUG: Não foi possível ler a imagem (ImageIO.read retornou null).");
                 return Optional.empty();
             }
 
             // 1. Tenta decodificar o QR Code primeiro
-            Optional<String> dishIdFromQr = qrCodeService.decodeQRCode(image);
-            if (dishIdFromQr.isPresent()) {
-                // Adicionando logs detalhados para depuração
-                String decodedText = dishIdFromQr.get().trim(); // Remove espaços em branco
-                System.out.println("DEBUG: Texto bruto decodificado do QR Code: '" + dishIdFromQr.get() + "'");
-                System.out.println("DEBUG: Texto após trim() para busca: '" + decodedText + "'");
-
-                Optional<Dish> dish = dishRepository.findById(decodedText);
-
-                if (dish.isPresent()) {
-                    System.out.println("DEBUG: Prato encontrado no repositório!");
-                } else {
-                    System.out.println("DEBUG: Prato NÃO encontrado no repositório para o ID: '" + decodedText + "'");
-                }
-                return dish;
+            Optional<String> qrCodeId = qrCodeService.decodeQRCode(image);
+            if (qrCodeId.isPresent()) {
+                String decodedText = qrCodeId.get().trim();
+                System.out.println("QR Code detectado. Buscando prato com qrCodeId: " + decodedText);
+                return dishRepository.findByQrCodeId(decodedText);
             }
 
             // 2. Se não houver QR Code, usa o reconhecimento de imagem
             System.out.println("Nenhum QR Code encontrado. Tentando reconhecimento de imagem...");
             Optional<String> dishIdFromMl = imageRecognitionService.identifyDish(image);
             if (dishIdFromMl.isPresent()) {
-                return dishRepository.findById(dishIdFromMl.get());
+                // O serviço mock retorna um qrCodeId
+                return dishRepository.findByQrCodeId(dishIdFromMl.get());
             }
 
             return Optional.empty();
